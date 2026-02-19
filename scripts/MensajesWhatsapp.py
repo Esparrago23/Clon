@@ -5,6 +5,9 @@ import random
 from datetime import datetime
 from dateutil import parser as dateparser
 from playwright.sync_api import sync_playwright
+from app.core.database import SessionLocal
+from app.infrastructure.repositories.whatsapp import WhatsAppRepository
+from app.application.use_cases.ingest_whatsapp import IngestWhatsAppMessageUseCase
 
 OUTPUT_FILE = "mensajes_whatsapp.jsonl"
 
@@ -57,8 +60,10 @@ def parse_message(msg, nombre_chat):
         texto = texto_el.inner_text().strip()
     else:
         texto = msg.inner_text().strip()
-
-    texto = re.sub(r"\n?\d{1,2}:\d{2}\s?[APMapm]{2}$", "", texto).strip()
+    
+    if remitente != "Tú" and texto.startswith(remitente + "\n"):
+        texto = texto[len(remitente):].strip()
+    texto = re.sub(r"\n?\d{1,2}:\d{2}\s*[ap]\.?\s*m\.?$", "", texto, flags=re.IGNORECASE).strip()
 
     return {
         "chat": nombre_chat,
@@ -92,6 +97,10 @@ def run():
             if not msg_id:
                 msg_id = hash(msg.inner_text().strip())
             mensajes_vistos.add(msg_id)
+
+        db_session = SessionLocal()
+        repo = WhatsAppRepository(db_session)
+        use_case = IngestWhatsAppMessageUseCase(repo)
 
         while True:
             try:
@@ -130,6 +139,11 @@ def run():
 
                     print(f"[{'ME' if parsed['is_me'] else 'OTRO'}] {parsed['chat']} -> {parsed['text']}")
                     save_message(data)
+                    try:
+                        use_case.execute(data)
+                        print(" -> Guardado en Memoria Relacional (PostgreSQL)")
+                    except Exception as db_err:
+                        print(f" -> Error en BD: {db_err}")
 
             except Exception as e:
                 print("Advertencia:", e)

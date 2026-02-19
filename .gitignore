@@ -2,6 +2,8 @@ venv
 .env
 __pycache__
 __init__.py
-.\scripts\whatsapp_session
 whatsapp_session
-./scripts/mensajes_whatsapp.jsonl
+mensajes_whatsapp.jsonl
+./chats/*.txt
+chats/*
+!.gitkeep

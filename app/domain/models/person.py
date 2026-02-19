@@ -5,9 +5,9 @@ from app.domain.models.base import BaseModel
 class Person(BaseModel):
     __tablename__ = "persons"
 
-    name = Column(String(100))
-    phone = Column(String(30), unique=True)
+    name = Column(String(255), unique=True) 
+    phone = Column(String(50), nullable=True)
 
-    conversations = relationship("Conversation", back_populates="person")
+    messages_sent = relationship("Message", back_populates="sender_person")
     events = relationship("Event", back_populates="person")
     memories = relationship("Memory", back_populates="person")

@@ -1,7 +1,6 @@
 version: "3.9"
 
 services:
-
   postgres:
     image: postgres:16
     container_name: clon_postgres
@@ -15,5 +14,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: clon_chromadb
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
 volumes:
   postgres_data:
+  chroma_data:
