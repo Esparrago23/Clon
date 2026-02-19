@@ -1,0 +1,5 @@
+2026/02/18-21:23:19.124 5ea4 Creating DB C:\clonDigital\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb since it was missing.
+2026/02/18-21:23:19.134 5ea4 Reusing MANIFEST C:\clonDigital\whatsapp_session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/02/18-21:23:41.671 4c08 Level-0 table #5: started
+2026/02/18-21:23:41.690 4c08 Level-0 table #5: 1013129 bytes OK
+2026/02/18-21:23:41.695 4c08 Delete type=0 #3

@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: clon_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: clon_user
+      POSTGRES_PASSWORD: clon_pass
+      POSTGRES_DB: clon_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
