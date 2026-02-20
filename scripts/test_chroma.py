@@ -1,6 +1,6 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
-
+#python -m scripts.test_chroma
 def test_memoria():
     print("Conectando al cerebro...")
     chroma_client = chromadb.HttpClient(host="localhost", port=8000)
@@ -8,7 +8,7 @@ def test_memoria():
     modelo = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
     # ---> CAMBIA ESTA FRASE POR LO QUE QUIERAS PROBAR <---
-    pregunta_simulada = "¿Qué onda, vamos a comer o qué?"
+    pregunta_simulada = "y como te fue?"
     
     print(f"\nBuscando en tu memoria cómo sueles hablar sobre: '{pregunta_simulada}'\n")
     
