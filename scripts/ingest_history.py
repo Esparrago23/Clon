@@ -16,6 +16,26 @@ CHATS_A_PROCESAR = [
         "nombre_chat": "",            # Cómo se llamará en la Base de Datos
         "mi_nombre": ""            # Cómo apareces tú en este archivo específico
     },
+    {
+        "archivo": "chats/Chat de WhatsApp con Trike.txt", # Ruta del archivo .txt
+        "nombre_chat": "Trike",            # Cómo se llamará en la Base de Datos
+        "mi_nombre": "esparrago"            # Cómo apareces tú en este archivo específico
+    },
+    {
+        "archivo": "chats/Chat de WhatsApp con +52 961 456 5169.txt", # Ruta del archivo .txt
+        "nombre_chat": "+52 961 456 5169",            # Cómo se llamará en la Base de Datos
+        "mi_nombre": "esparrago"            # Cómo apareces tú en este archivo específico
+    },
+    {
+        "archivo": "chats/Chat de WhatsApp con +52 966 107 0145.txt", # Ruta del archivo .txt
+        "nombre_chat": "+52 966 107 0145",            # Cómo se llamará en la Base de Datos
+        "mi_nombre": "esparrago"            # Cómo apareces tú en este archivo específico
+    },
+    {
+        "archivo": "chats/Chat de WhatsApp con CHMMAno.txt", # Ruta del archivo .txt
+        "nombre_chat": "CHMMAno",            # Cómo se llamará en la Base de Datos
+        "mi_nombre": "esparrago"            # Cómo apareces tú en este archivo específico
+    },
     # Ejemplo para agregar más:
     # {
     #     "archivo": "chats/grupo_escuela.txt",

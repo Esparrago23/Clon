@@ -2,12 +2,21 @@ import json
 import time
 import re
 import random
+import sys
+import os
 from datetime import datetime
 from dateutil import parser as dateparser
 from playwright.sync_api import sync_playwright
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from app.core.database import SessionLocal
 from app.infrastructure.repositories.whatsapp import WhatsAppRepository
 from app.application.use_cases.ingest_whatsapp import IngestWhatsAppMessageUseCase
+
+from cognitive.shadow_engine import generar_respuesta
+from cognitive.engine_formatter import fragmentar_mensaje
+from cognitive.audio_processor import audio_agent
 
 OUTPUT_FILE = "mensajes_whatsapp.jsonl"
 
@@ -60,9 +69,22 @@ def parse_message(msg, nombre_chat):
         texto = texto_el.inner_text().strip()
     else:
         texto = msg.inner_text().strip()
-    
+        
     if remitente != "Tú" and texto.startswith(remitente + "\n"):
         texto = texto[len(remitente):].strip()
+        
+    # Validar si el mensaje es una nota de voz de WhatsApp (elemento audio)
+    audio_el = msg.query_selector('audio')
+    es_audio = audio_el is not None
+    if es_audio and not texto:
+        # En una implementación real de God Tier, aquí interceptaríamos el Blob del audio.
+        # Por ahora enviamos una transcripción stub/simulada o pasamos el flag.
+        audio_src = audio_el.get_attribute("src") or "audio_generico.ogg"
+        
+        # Simula la descarga y pasa a Whisper
+        print(f" 🎵 [AUDIO_DETECTADO] Descargando y transcribiendo nota de voz...")
+        texto = f"[NOTA DE VOZ] {audio_agent.transcribir_audio(audio_src)}"
+
     texto = re.sub(r"\n?\d{1,2}:\d{2}\s*[ap]\.?\s*m\.?$", "", texto, flags=re.IGNORECASE).strip()
 
     return {
@@ -118,6 +140,9 @@ def run():
                 nombre_chat = get_active_contact(page)
                 mensajes = page.query_selector_all("div.message-in, div.message-out")
 
+                nuevos_mensajes_texto = []
+                ultimo_remitente = None
+
                 for msg in mensajes:
                     parsed = parse_message(msg, nombre_chat)
                     texto = parsed["text"]
@@ -142,8 +167,85 @@ def run():
                     try:
                         use_case.execute(data)
                         print(" -> Guardado en Memoria Relacional (PostgreSQL)")
+                        
+                        if not parsed['is_me']:
+                            # Filtrar por tiempo: Solo responder a mensajes recientes (ultimos 15 minutos)
+                            try:
+                                msg_time = dateparser.parse(parsed['timestamp']).replace(tzinfo=None)
+                                time_diff_minutes = (datetime.now() - msg_time).total_seconds() / 60.0
+                            except:
+                                time_diff_minutes = 0 # Si no podemos parsear, asumimos reciente
+                                
+                            if time_diff_minutes < 15:
+                                # Le damos al motor cognitivo el contexto de la hora a la que se envió
+                                hora_formateada = msg_time.strftime("%H:%M") if 'msg_time' in locals() else "Reciente"
+                                nuevos_mensajes_texto.append(f"[{hora_formateada}] {texto}")
+                                ultimo_remitente = parsed['sender']
+                            else:
+                                print(f" [SKIP] Mensaje ignorado para auto-respuesta por ser antiguo ({time_diff_minutes:.0f} mins atrás)")
+                            
                     except Exception as db_err:
                         print(f" -> Error en BD: {db_err}")
+
+                # Generación de Respuesta por el Clon una vez procesados todos los mensajes nuevos del chat
+                if nuevos_mensajes_texto and ultimo_remitente:
+                    texto_combinado = "\n".join(nuevos_mensajes_texto)
+                    respuesta_clon = generar_respuesta(nombre_chat, ultimo_remitente, texto_combinado)
+                    
+                    if "[ABORT]" in respuesta_clon:
+                        print(f" ⚠️ {respuesta_clon}")
+                    elif "[SLEEP]" in respuesta_clon:
+                        print(f" 💤 {respuesta_clon} (Ignorando para no despertar)")
+                    elif "[SEEN]" in respuesta_clon:
+                        print(f" 👻 [CLON GHOST]: Conversación finalizada, dejando en visto.")
+                    else:
+                        print(f" [CLON PENSANDO...]")
+                        
+                        # Buscar la caja de texto (textarea) de WhatsApp
+                        caja_texto = page.locator('div[aria-placeholder="Escribe un mensaje"]').first
+                        if caja_texto.count() > 0:
+                            
+                            # Validar si Shadow decidió enviar un Audio
+                            if respuesta_clon.startswith("[VOICE_NOTE]"):
+                                audio_path = audio_agent.generar_voz(respuesta_clon.replace("[VOICE_NOTE]", "").strip())
+                                print(f" 🎙️ [TTS] Enviando nota de voz generada: {audio_path}")
+                                
+                                # Simulamos adjuntar el archivo de audio. En una app real, 
+                                # se da click en el clip de adjuntar -> documento/foto -> y se sube el .ogg
+                                # page.locator('span[data-icon="clip"]').click()
+                                # ... subida de archivo ...
+                                time.sleep(random.uniform(5.0, 10.0)) # Simulando que graba el mensaje
+                                caja_texto.click()
+                                page.keyboard.type("*(Nota de voz enviada)*") # Placeholder visual
+                                page.keyboard.press("Enter")
+                                
+                            else:
+                                fragmentos = fragmentar_mensaje(respuesta_clon)
+                                
+                                # Si el context combinado era muy largo o tenso, dudamos más antes de contestar
+                                if len(texto_combinado) > 150 or "!" in texto_combinado:
+                                    print(" 🎭 [TENSION]: Añadiendo suspense extra al delay de pensamiento.")
+                                    time_extra = random.uniform(5.0, 15.0)
+                                    time.sleep(time_extra)
+
+                                for k, frag in enumerate(fragmentos):
+                                
+                                    # Delay Humano de Respuesta basado en el texto total que leímos
+                                    delay_pensamiento = min(10, int(len(texto_combinado if k == 0 else frag) / 15)) + random.uniform(1.0, 3.0)
+                                    time.sleep(delay_pensamiento)
+                                    
+                                    caja_texto.click()
+                                    
+                                    # Escribir letra por letra simulando humano
+                                    page.keyboard.type(frag, delay=random.randint(30, 80))
+                                    
+                                    # Delay final antes de dar Enter
+                                    time.sleep(random.uniform(0.5, 1.5))
+                                    page.keyboard.press("Enter")
+                                    print(f" [CLON ENVIÓ ({k+1}/{len(fragmentos)})]: {frag}")
+                                    
+                        else:
+                            print(" ❌ No se encontró la caja de texto para responder.")
 
             except Exception as e:
                 print("Advertencia:", e)
